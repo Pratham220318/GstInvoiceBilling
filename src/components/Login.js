@@ -86,7 +86,7 @@ export default function Login({ onLoginSuccess }) {
           </button>
         </form>
 
-        <div className="login-footer">
+        {/* <div className="login-footer">
           <p>Demo Accounts:</p>
           <div className="demo-accounts-grid">
             <div className="demo-badge">
@@ -99,8 +99,8 @@ export default function Login({ onLoginSuccess }) {
               <span>Password:</span> <code>password123</code>
             </div>
           </div>
-        </div>
+        </div> */}
       </div>
-    </div>
+    </div>  
   );
 }

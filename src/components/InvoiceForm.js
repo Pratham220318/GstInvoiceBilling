@@ -266,7 +266,7 @@ export default function InvoiceForm({
                     }}
                     style={{ borderColor: "#2563eb", background: "rgba(30, 41, 59, 0.8)" }}
                   >
-                    <option value="" disabled>-- Choose customer from DB --</option>
+                    <option value="" disabled>Choose customer</option>
                     {customers.map((cust, idx) => (
                       <option key={cust.id || idx} value={idx}>{cust.name} ({cust.stateCode || cust.state_code})</option>
                     ))}
@@ -537,7 +537,7 @@ export default function InvoiceForm({
               </div>
             </div>
 
-            <div className="form-section-card">
+            {/* <div className="form-section-card">
               <div className="section-card-title">Tax Calculations & Summary</div>
               <div className="form-group">
                 <label className="form-label">Tax Rows Calculation Mode</label>
@@ -574,7 +574,7 @@ export default function InvoiceForm({
                   placeholder="Declaration..."
                 />
               </div>
-            </div>
+            </div> */}
 
             {/* Line Items section (merged inside Invoice Details) */}
             <div className="form-section-header-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "1.5rem 0 1rem 0" }}>

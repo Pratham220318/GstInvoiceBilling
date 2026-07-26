@@ -370,7 +370,7 @@ export default function Home() {
       if (res.ok) {
         showStatus("Invoice deleted successfully!");
         fetchInvoices(currentUser.sellerName);
-        
+
         // Reset editor form if we deleted the loaded invoice
         if (invoice.id === id) {
           handleClearForm();
@@ -434,7 +434,7 @@ export default function Home() {
       localStorage.setItem("gst_invoice_user", JSON.stringify(user));
     }
     showStatus(`Logged in as ${user.sellerName}`);
-    
+
     if (user.sellerName === "PREM ENTERPRISES") {
       setInvoice(TEMPLATE_1);
     } else if (user.sellerName === "SRIDEVI ENTERPRISES") {
@@ -484,12 +484,7 @@ export default function Home() {
         </div>
 
         {/* User context information */}
-        <div className="user-profile-badge">
-          <span className="user-seller-label">{currentUser.sellerName}</span>
-          <button type="button" className="btn-logout" onClick={handleLogout}>
-            Logout
-          </button>
-        </div>
+
 
         <div className="dashboard-actions">
           {statusMessage && (
@@ -513,7 +508,14 @@ export default function Home() {
           <button type="button" className="btn btn-primary" onClick={() => window.print()}>
             Print Invoice
           </button>
+          <div className="user-profile-badge">
+            <span className="user-seller-label">{currentUser.sellerName}</span>
+            <button type="button" className="btn-logout" onClick={handleLogout}>
+              Logout
+            </button>
+          </div>
         </div>
+
       </header>
 
       {/* Main Panels */}
