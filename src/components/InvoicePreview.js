@@ -12,6 +12,8 @@ export default function InvoicePreview({ invoiceData }) {
     declaration = "We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.",
   } = invoiceData;
 
+  const sterioCharge = parseFloat(metadata.sterioCharge) || 0;
+
   // Formatting helpers
   const formatCurrency = (val) => {
     if (val === null || val === undefined || isNaN(val)) return "0.00";
@@ -39,7 +41,7 @@ export default function InvoicePreview({ invoiceData }) {
   }
 
   // Calculate calculations
-  let totalTaxableValue = 0;
+  let subtotalProducts = 0;
   let totalQuantity = 0;
   let unitName = "";
 
@@ -61,7 +63,7 @@ export default function InvoicePreview({ invoiceData }) {
     }
 
     const taxableAmount = qty * rateExcl;
-    totalTaxableValue += taxableAmount;
+    subtotalProducts += taxableAmount;
     totalQuantity += qty;
     if (item.unit) unitName = item.unit; // track last unit or display generic
 
@@ -75,11 +77,14 @@ export default function InvoicePreview({ invoiceData }) {
     };
   });
 
+  const totalTaxableValue = subtotalProducts + parseFloat(sterioCharge || 0);
+
   // Calculate taxes
   let cgstTotal = 0;
   let sgstTotal = 0;
   let igstTotal = 0;
 
+  // Tax on goods
   itemCalculations.forEach((item) => {
     const tax = item.taxableAmount * (item.gstRate / 100);
     if (isIgst) {
@@ -89,6 +94,16 @@ export default function InvoicePreview({ invoiceData }) {
       sgstTotal += tax / 2;
     }
   });
+
+  // Tax on sterio charge (uses the GST rate of the first item, default 18%)
+  const firstItemGstRate = items[0]?.gstRate || 18;
+  const sterioTax = parseFloat(sterioCharge || 0) * (firstItemGstRate / 100);
+  if (isIgst) {
+    igstTotal += sterioTax;
+  } else {
+    cgstTotal += sterioTax / 2;
+    sgstTotal += sterioTax / 2;
+  }
 
   const totalTaxes = isIgst ? igstTotal : (cgstTotal + sgstTotal);
   const grandTotalBeforeRounding = totalTaxableValue + totalTaxes;
@@ -111,6 +126,21 @@ export default function InvoicePreview({ invoiceData }) {
     gstRateGroups[rate].taxableValue += item.taxableAmount;
     gstRateGroups[rate].taxAmount += item.taxableAmount * (rate / 100);
   });
+
+  // Aggregate sterio charge under the first item's GST Rate group in HSN summary
+  if (parseFloat(sterioCharge || 0) > 0) {
+    const groupRate = firstItemGstRate;
+    if (!gstRateGroups[groupRate]) {
+      gstRateGroups[groupRate] = {
+        hsnList: new Set(),
+        taxableValue: 0,
+        gstRate: groupRate,
+        taxAmount: 0,
+      };
+    }
+    gstRateGroups[groupRate].taxableValue += parseFloat(sterioCharge || 0);
+    gstRateGroups[groupRate].taxAmount += sterioTax;
+  }
 
   const hsnGroups = {};
   Object.values(gstRateGroups).forEach((group, index) => {
@@ -279,34 +309,60 @@ export default function InvoicePreview({ invoiceData }) {
             <div className="goods-th col-rate">Rate</div>
             <div className="goods-th col-per">per</div>
             <div className="goods-th col-amount">Amount</div>
-          </div>          <div className="goods-tbody">
-            {itemCalculations.map((item, idx) => (
-              <div
-                className="goods-row"
-                key={idx}
-              >
-                <div className="goods-td col-sr">{idx + 1}</div>
+          </div>
+          <div className="goods-tbody">
+            {(() => {
+              let srCounter = 1;
+              return itemCalculations.map((item, idx) => {
+                const isHeaderOnly = parseFloat(item.quantity) === 0 && parseFloat(item.rate) === 0;
+                const currentSrNo = isHeaderOnly ? "" : srCounter++;
+
+                return (
+                  <div
+                    className="goods-row"
+                    key={idx}
+                  >
+                    <div className="goods-td col-sr">{currentSrNo}</div>
+                    <div className="goods-td col-desc">
+                      <div className="desc-main-text">{item.description}</div>
+                    </div>
+                    <div className="goods-td col-hsn">{item.hsn || ""}</div>
+                    <div className="goods-td col-qty">
+                      <strong>{isHeaderOnly ? "" : `${item.qty} ${item.unit}`}</strong>
+                    </div>
+                    <div className="goods-td col-rate-incl">
+                      {isHeaderOnly ? "" : formatCurrencyNoSymbol(item.rateIncl)}
+                    </div>
+                    <div className="goods-td col-rate">
+                      {isHeaderOnly ? "" : formatCurrencyNoSymbol(item.rateExcl)}
+                    </div>
+                    <div className="goods-td col-per">
+                      {isHeaderOnly ? "" : item.unit}
+                    </div>
+                    <div className="goods-td col-amount">
+                      <strong>{isHeaderOnly ? "" : formatCurrencyNoSymbol(item.taxableAmount)}</strong>
+                    </div>
+                  </div>
+                );
+              });
+            })()}
+
+            {parseFloat(sterioCharge) > 0 && (
+              <div className="goods-row">
+                <div className="goods-td col-sr"></div>
                 <div className="goods-td col-desc">
-                  <div className="desc-main-text">{item.description}</div>
+                  <div className="desc-main-text">Sterio charge:</div>
                 </div>
-                <div className="goods-td col-hsn">{item.hsn}</div>
-                <div className="goods-td col-qty">
-                  <strong>{item.qty} {item.unit}</strong>
-                </div>
-                <div className="goods-td col-rate-incl">
-                  {formatCurrencyNoSymbol(item.rateIncl)}
-                </div>
-                <div className="goods-td col-rate">
-                  {formatCurrencyNoSymbol(item.rateExcl)}
-                </div>
-                <div className="goods-td col-per">
-                  {item.unit}
-                </div>
+                <div className="goods-td col-hsn"></div>
+                <div className="goods-td col-qty"></div>
+                <div className="goods-td col-rate-incl"></div>
+                <div className="goods-td col-rate"></div>
+                <div className="goods-td col-per"></div>
                 <div className="goods-td col-amount">
-                  <strong>{formatCurrencyNoSymbol(item.taxableAmount)}</strong>
+                  <strong>{formatCurrencyNoSymbol(parseFloat(sterioCharge))}</strong>
                 </div>
               </div>
-            ))}
+            )}
 
             {/* Sub Total (Only rendered if there are multiple items) */}
             {itemCalculations.length > 1 && (

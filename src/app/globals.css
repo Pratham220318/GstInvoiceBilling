@@ -546,6 +546,7 @@ select.form-control {
   font-size: 11px;
   border-right: 1px solid var(--inv-border);
   min-height: auto;
+  justify-content: flex-start !important;
 }
 
 .goods-spacer-row {

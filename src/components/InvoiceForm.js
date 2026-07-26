@@ -95,6 +95,9 @@ export default function InvoiceForm({
       rate: 0,
       unit: "kg",
       gstRate: 18,
+      isFlatAmount: false,
+      flatAmount: 0,
+      noSrNo: false,
     };
     onChange({
       ...invoiceData,
@@ -533,6 +536,21 @@ export default function InvoiceForm({
                   value={invoiceData.metadata?.termsOfDelivery || ""}
                   onChange={(e) => handleMetadataChange("termsOfDelivery", e.target.value)}
                   placeholder="Terms of delivery description..."
+                />
+              </div>
+            </div>
+
+            <div className="form-section-card">
+              <div className="section-card-title">Supplementary Charges</div>
+              <div className="form-group">
+                <label className="form-label">Sterio Charge (₹)</label>
+                <input
+                  type="number"
+                  step="any"
+                  className="form-control"
+                  value={invoiceData.metadata?.sterioCharge || ""}
+                  onChange={(e) => handleMetadataChange("sterioCharge", parseFloat(e.target.value) || 0)}
+                  placeholder="0.00"
                 />
               </div>
             </div>
