@@ -1,0 +1,118 @@
+[
+  {
+    "seller": {
+      "name": "",
+      "address": "",
+      "gstin": "",
+      "state": "",
+      "stateCode": ""
+    },
+    "buyer": {
+      "name": "",
+      "address": "",
+      "gstin": "",
+      "state": "",
+      "stateCode": ""
+    },
+    "metadata": {
+      "invoiceNo": "",
+      "dated": "",
+      "deliveryNote": "",
+      "paymentTerms": "",
+      "referenceNoDate": "",
+      "otherReferences": "",
+      "buyerOrderNo": "",
+      "orderDate": "",
+      "dispatchDocNo": "",
+      "deliveryNoteDate": "",
+      "dispatchedThrough": "",
+      "destination": "",
+      "billOfLading": "",
+      "motorVehicleNo": "",
+      "termsOfDelivery": ""
+    },
+    "items": [
+      {
+        "description": "",
+        "hsn": "",
+        "quantity": 0,
+        "rateType": "incl",
+        "rate": 0,
+        "unit": "kg",
+        "gstRate": 18
+      }
+    ],
+    "taxMode": "auto",
+    "wordsMode": "grandTotal",
+    "declaration": "We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.",
+    "id": "1785053161592",
+    "createdAt": "2026-07-26T08:06:01.592Z"
+  },
+  {
+    "seller": {
+      "name": "PREM ENTERPRISES",
+      "address": "PROP : SHRIRAM ETHIRAJ GROUND FLOOR, PLOT NO.G/26,\nCLASSIC INDUSTRIES, NEAR KAMAN VILLAGE, POMAN,\nVASAI EAST, MUMBAI - 401208",
+      "gstin": "27AAEPE2223R2ZM",
+      "state": "Maharashtra",
+      "stateCode": "27"
+    },
+    "buyer": {
+      "name": "M J ENTERPRISES",
+      "address": "526, 5th Floor A Wing, Princ Park\nRajdeep CHS Near PMGP Colony\nDharavi Mumbai - 400017",
+      "gstin": "27AGBPJ3363Q1Z0",
+      "state": "Maharashtra",
+      "stateCode": "27"
+    },
+    "metadata": {
+      "invoiceNo": "29",
+      "dated": "03-Nov-25",
+      "deliveryNote": "29",
+      "paymentTerms": "",
+      "referenceNoDate": "",
+      "otherReferences": "",
+      "buyerOrderNo": "",
+      "orderDate": "",
+      "dispatchDocNo": "29",
+      "deliveryNoteDate": "03-Nov-25",
+      "dispatchedThrough": "Portor",
+      "destination": "",
+      "billOfLading": "03-Nov-25",
+      "motorVehicleNo": "",
+      "termsOfDelivery": ""
+    },
+    "items": [
+      {
+        "description": "LIVIA LARGE (24-18) METALIC BLACK",
+        "hsn": "68159990",
+        "quantity": 3,
+        "rateType": "excl",
+        "rate": 6127.12,
+        "unit": "PCS",
+        "gstRate": 18
+      },
+      {
+        "description": "BELL-ARGON WALL HUNG (457) WHITE",
+        "hsn": "6910",
+        "quantity": 4,
+        "rateType": "excl",
+        "rate": 4696,
+        "unit": "PCS",
+        "gstRate": 18
+      },
+      {
+        "description": "GRACE PLAIN LARGE (24-18)",
+        "hsn": "73241000",
+        "quantity": 8,
+        "rateType": "excl",
+        "rate": 4006.78,
+        "unit": "PCS",
+        "gstRate": 18
+      }
+    ],
+    "taxMode": "cgst-sgst",
+    "wordsMode": "taxableValue",
+    "declaration": "We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.",
+    "id": "1785059083675",
+    "createdAt": "2026-07-26T09:44:43.675Z"
+  }
+]
