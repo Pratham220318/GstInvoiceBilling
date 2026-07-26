@@ -3,8 +3,10 @@
 import React, { useState, useEffect } from "react";
 import InvoiceForm from "../components/InvoiceForm";
 import InvoicePreview from "../components/InvoicePreview";
+import Login from "../components/Login";
 
 const BLANK_INVOICE = {
+  id: "",
   seller: {
     name: "",
     address: "",
@@ -53,6 +55,7 @@ const BLANK_INVOICE = {
 };
 
 const TEMPLATE_1 = {
+  id: "",
   seller: {
     name: "PREM ENTERPRISES",
     address: "PROP : SHRIRAMETHIRAJGROUND FLOOR, PLOT NO.G/26,\nCLASSIC INDUSTRIES, NEAR KAMAN VILLAGE, POMAN,\nVASAI EAST, MUMBAI - 401208",
@@ -101,6 +104,7 @@ const TEMPLATE_1 = {
 };
 
 const TEMPLATE_2 = {
+  id: "",
   seller: {
     name: "SRIDEVI ENTERPRISES",
     address: "Grd Floor,Bulding No/flat No-1642 Satyam CHS,Sant\nRohidas Marg, Mukund Nagar,Dharavi,Mumbai 400017",
@@ -149,6 +153,7 @@ const TEMPLATE_2 = {
 };
 
 const TEMPLATE_3 = {
+  id: "",
   seller: {
     name: "PREM ENTERPRISES",
     address: "PROP : SHRIRAM ETHIRAJ GROUND FLOOR, PLOT NO.G/26,\nCLASSIC INDUSTRIES, NEAR KAMAN VILLAGE, POMAN,\nVASAI EAST, MUMBAI - 401208",
@@ -215,14 +220,47 @@ const TEMPLATE_3 = {
 };
 
 export default function Home() {
-  const [invoice, setInvoice] = useState(TEMPLATE_1);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [invoice, setInvoice] = useState(BLANK_INVOICE);
   const [savedInvoices, setSavedInvoices] = useState([]);
+  const [customers, setCustomers] = useState([]);
   const [statusMessage, setStatusMessage] = useState(null);
+  const [isClient, setIsClient] = useState(false);
 
-  // Fetch saved invoices from JSON database on load
-  const fetchInvoices = async () => {
+  // Mark client hydration complete
+  useEffect(() => {
+    setIsClient(true);
+    const storedUser = localStorage.getItem("gst_invoice_user");
+    if (storedUser) {
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        setCurrentUser(parsedUser);
+        // Load default user template
+        if (parsedUser.sellerName === "PREM ENTERPRISES") {
+          setInvoice(TEMPLATE_1);
+        } else if (parsedUser.sellerName === "SRIDEVI ENTERPRISES") {
+          setInvoice(TEMPLATE_2);
+        } else {
+          setInvoice(BLANK_INVOICE);
+        }
+        fetchInvoices(parsedUser.sellerName);
+        fetchCustomers(parsedUser.sellerName);
+      } catch (e) {
+        console.error("Error parsing stored user:", e);
+      }
+    }
+  }, []);
+
+  const fetchInvoices = async (sellerName) => {
+    const activeSeller = sellerName || currentUser?.sellerName;
+    if (!activeSeller) return;
+
     try {
-      const res = await fetch("/api/invoices");
+      const res = await fetch("/api/invoices", {
+        headers: {
+          "x-user-seller": activeSeller
+        }
+      });
       if (res.ok) {
         const data = await res.json();
         setSavedInvoices(data);
@@ -232,43 +270,84 @@ export default function Home() {
     }
   };
 
-  useEffect(() => {
-    fetchInvoices();
-  }, []);
+  const fetchCustomers = async (sellerName) => {
+    const activeSeller = sellerName || currentUser?.sellerName;
+    if (!activeSeller) return;
+
+    try {
+      const res = await fetch("/api/customers", {
+        headers: {
+          "x-user-seller": activeSeller
+        }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCustomers(data);
+      }
+    } catch (err) {
+      console.error("Error loading customers:", err);
+    }
+  };
 
   const handleInvoiceChange = (newVal) => {
     setInvoice(newVal);
   };
 
   const handleLoadTemplate = (num) => {
-    if (num === 1) {
-      setInvoice(TEMPLATE_1);
-      showStatus("Loaded Template for PREM ENTERPRISES (PDF 1)");
-    } else if (num === 2) {
-      setInvoice(TEMPLATE_2);
-      showStatus("Loaded Template for SRIDEVI ENTERPRISES (PDF 2)");
-    } else if (num === 3) {
-      setInvoice(TEMPLATE_3);
-      showStatus("Loaded Template for PREM ENTERPRISES Multi-product (PDF 3)");
+    if (currentUser?.sellerName === "PREM ENTERPRISES") {
+      if (num === 1) {
+        setInvoice(TEMPLATE_1);
+        showStatus("Loaded Template 1 for PREM ENTERPRISES");
+      } else if (num === 3) {
+        setInvoice(TEMPLATE_3);
+        showStatus("Loaded Multi-product Template for PREM ENTERPRISES");
+      } else {
+        showStatus("Permission Denied: SRIDEVI template is locked.", "error");
+      }
+    } else if (currentUser?.sellerName === "SRIDEVI ENTERPRISES") {
+      if (num === 2) {
+        setInvoice(TEMPLATE_2);
+        showStatus("Loaded Template 2 for SRIDEVI ENTERPRISES");
+      } else {
+        showStatus("Permission Denied: PREM templates are locked.", "error");
+      }
     }
   };
 
   const handleSaveInvoice = async () => {
+    if (!currentUser) return;
     try {
+      // Force the invoice seller name to match the logged-in user
+      const updatedInvoice = {
+        ...invoice,
+        seller: {
+          ...invoice.seller,
+          name: currentUser.sellerName,
+          // Prefill seller address/gstin if empty
+          address: invoice.seller.address || (currentUser.sellerName === "PREM ENTERPRISES" ? TEMPLATE_1.seller.address : TEMPLATE_2.seller.address),
+          gstin: invoice.seller.gstin || (currentUser.sellerName === "PREM ENTERPRISES" ? TEMPLATE_1.seller.gstin : TEMPLATE_2.seller.gstin),
+          state: invoice.seller.state || (currentUser.sellerName === "PREM ENTERPRISES" ? TEMPLATE_1.seller.state : TEMPLATE_2.seller.state),
+          stateCode: invoice.seller.stateCode || (currentUser.sellerName === "PREM ENTERPRISES" ? TEMPLATE_1.seller.stateCode : TEMPLATE_2.seller.stateCode),
+        }
+      };
+
       const res = await fetch("/api/invoices", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(invoice),
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-seller": currentUser.sellerName
+        },
+        body: JSON.stringify(updatedInvoice),
       });
 
       if (res.ok) {
         const saved = await res.json();
-        // Update current state with the returned invoice (includes ID)
         setInvoice(saved);
-        fetchInvoices();
-        showStatus("Invoice saved successfully to JSON database!");
+        fetchInvoices(currentUser.sellerName);
+        showStatus("Invoice saved successfully to database!");
       } else {
-        showStatus("Failed to save invoice.", "error");
+        const errData = await res.json();
+        showStatus(errData.error || "Failed to save invoice.", "error");
       }
     } catch (err) {
       console.error("Error saving invoice:", err);
@@ -276,8 +355,71 @@ export default function Home() {
     }
   };
 
+  const handleDeleteInvoice = async (id) => {
+    if (!currentUser || !id) return;
+    if (!confirm("Are you sure you want to delete this invoice?")) return;
+
+    try {
+      const res = await fetch(`/api/invoices?id=${id}`, {
+        method: "DELETE",
+        headers: {
+          "x-user-seller": currentUser.sellerName
+        }
+      });
+
+      if (res.ok) {
+        showStatus("Invoice deleted successfully!");
+        fetchInvoices(currentUser.sellerName);
+        
+        // Reset editor form if we deleted the loaded invoice
+        if (invoice.id === id) {
+          handleClearForm();
+        }
+      } else {
+        const errData = await res.json();
+        showStatus(errData.error || "Failed to delete invoice.", "error");
+      }
+    } catch (err) {
+      console.error("Error deleting invoice:", err);
+      showStatus("Network error during deletion.", "error");
+    }
+  };
+
+  const handleAddCustomer = async (cust) => {
+    if (!currentUser) return false;
+    try {
+      const res = await fetch("/api/customers", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-seller": currentUser.sellerName
+        },
+        body: JSON.stringify(cust)
+      });
+
+      if (res.ok) {
+        showStatus("Customer added successfully!");
+        fetchCustomers(currentUser.sellerName);
+        return true;
+      } else {
+        const errData = await res.json();
+        showStatus(errData.error || "Failed to add customer.", "error");
+        return false;
+      }
+    } catch (err) {
+      console.error("Error adding customer:", err);
+      showStatus("Network error while adding customer.", "error");
+      return false;
+    }
+  };
+
   const handleClearForm = () => {
-    setInvoice(BLANK_INVOICE);
+    // Retain seller details when clearing form
+    const defaultSeller = currentUser?.sellerName === "PREM ENTERPRISES" ? TEMPLATE_1.seller : TEMPLATE_2.seller;
+    setInvoice({
+      ...BLANK_INVOICE,
+      seller: defaultSeller
+    });
     showStatus("Form cleared.");
   };
 
@@ -286,10 +428,52 @@ export default function Home() {
     showStatus(`Loaded Invoice No. ${savedInv.metadata?.invoiceNo || "N/A"}`);
   };
 
+  const handleLoginSuccess = (user) => {
+    setCurrentUser(user);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("gst_invoice_user", JSON.stringify(user));
+    }
+    showStatus(`Logged in as ${user.sellerName}`);
+    
+    if (user.sellerName === "PREM ENTERPRISES") {
+      setInvoice(TEMPLATE_1);
+    } else if (user.sellerName === "SRIDEVI ENTERPRISES") {
+      setInvoice(TEMPLATE_2);
+    } else {
+      setInvoice(BLANK_INVOICE);
+    }
+    fetchInvoices(user.sellerName);
+    fetchCustomers(user.sellerName);
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("gst_invoice_user");
+    }
+    setSavedInvoices([]);
+    setCustomers([]);
+    setInvoice(BLANK_INVOICE);
+    showStatus("Logged out successfully");
+  };
+
   const showStatus = (text, type = "success") => {
     setStatusMessage({ text, type });
     setTimeout(() => setStatusMessage(null), 4000);
   };
+
+  if (!isClient) {
+    return (
+      <div className="login-container">
+        <div style={{ color: "#fff", fontSize: "1.2rem" }}>Loading portal...</div>
+      </div>
+    );
+  }
+
+  // Render login screen if no session
+  if (!currentUser) {
+    return <Login onLoginSuccess={handleLoginSuccess} />;
+  }
 
   return (
     <div className="dashboard-container">
@@ -298,6 +482,15 @@ export default function Home() {
         <div className="dashboard-logo">
           GST INVOICING <span className="logo-sub">Tally Look</span>
         </div>
+
+        {/* User context information */}
+        <div className="user-profile-badge">
+          <span className="user-seller-label">{currentUser.sellerName}</span>
+          <button type="button" className="btn-logout" onClick={handleLogout}>
+            Logout
+          </button>
+        </div>
+
         <div className="dashboard-actions">
           {statusMessage && (
             <div
@@ -328,12 +521,16 @@ export default function Home() {
         {/* Editor (Left Panel) */}
         <InvoiceForm
           invoiceData={invoice}
+          currentUser={currentUser}
+          customers={customers}
+          onAddCustomer={handleAddCustomer}
           onChange={handleInvoiceChange}
           onLoadTemplate={handleLoadTemplate}
           onSaveInvoice={handleSaveInvoice}
           onClearForm={handleClearForm}
           savedInvoices={savedInvoices}
           onLoadSavedInvoice={handleLoadSavedInvoice}
+          onDeleteInvoice={handleDeleteInvoice}
         />
 
         {/* Live Preview (Right Panel) */}
@@ -344,4 +541,3 @@ export default function Home() {
     </div>
   );
 }
-

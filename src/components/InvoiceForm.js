@@ -1,60 +1,27 @@
 import React, { useState } from "react";
 
-const PRESET_CUSTOMERS = [
-  {
-    name: "SWAN AGRI PRODUCTS PVT.LTD.",
-    address: "R-81 MIDC TTC Industrial Area,Ear Golde Garrage,\nRaale,Navi Mumbai,022-2690998/277695455",
-    gstin: "27AAICS9978C1ZR",
-    state: "Maharashtra",
-    stateCode: "27",
-  },
-  {
-    name: "PREM ENTERPRISES",
-    address: "PROP : SHRIRAM ETHIRAJ GROUND FLOOR, PLOT NO.G/26,\nCLASSIC INDUSTRIES, NEAR KAMAN VILLAGE, POMAN,\nVASAI EAST, MUMBAI - 401208",
-    gstin: "27AAEPE2223R2ZM",
-    state: "Maharashtra",
-    stateCode: "27",
-  },
-  {
-    name: "MAHARAJA FARASAN",
-    address: "B/2 80 Anna Nagar,Cross Road Dharavi,\nMumbai",
-    gstin: "27ACVPN5208J1Z2",
-    state: "Maharashtra",
-    stateCode: "27",
-  },
-  {
-    name: "M J ENTERPRISES",
-    address: "526, 5th Floor A Wing, Princ Park\nRajdeep CHS Near PMGP Colony\nDharavi Mumbai - 400017",
-    gstin: "27AGBPJ3363Q1Z0",
-    state: "Maharashtra",
-    stateCode: "27",
-  },
-  {
-    name: "BHAKTI FOODS",
-    address: "Gala No 4,Sagha Pada,\nD.E. Estate, Opp, Kaman Road,Chinchoti,\nVasai,Dist-Palghar",
-    gstin: "27AJPPA1854Q1ZO",
-    state: "Maharashtra",
-    stateCode: "27",
-  },
-  {
-    name: "SRIDEVI ENTERPRISES",
-    address: "Grd Floor,Bulding No/flat No-1642 Satyam CHS,Sant\nRohidas Marg, Mukund Nagar,Dharavi,Mumbai 400017",
-    gstin: "27AFCPE5975R1ZQ",
-    state: "Maharashtra",
-    stateCode: "27",
-  }
-];
-
 export default function InvoiceForm({
   invoiceData,
+  currentUser,
+  customers = [],
+  onAddCustomer,
   onChange,
   onLoadTemplate,
   onSaveInvoice,
   onClearForm,
   savedInvoices = [],
   onLoadSavedInvoice,
+  onDeleteInvoice,
 }) {
-  const [activeTab, setActiveTab] = useState("seller-buyer");
+  const [activeTab, setActiveTab] = useState("invoice-details");
+
+  // State for Add Customer Form
+  const [showAddCust, setShowAddCust] = useState(false);
+  const [newCustName, setNewCustName] = useState("");
+  const [newCustAddress, setNewCustAddress] = useState("");
+  const [newCustGstin, setNewCustGstin] = useState("");
+  const [newCustState, setNewCustState] = useState("");
+  const [newCustStateCode, setNewCustStateCode] = useState("");
 
   const handleCustomerSelect = (cust) => {
     onChange({
@@ -68,6 +35,28 @@ export default function InvoiceForm({
         stateCode: cust.stateCode,
       },
     });
+  };
+
+  const handleSaveCustomer = async () => {
+    if (!newCustName.trim()) {
+      alert("Please enter customer name");
+      return;
+    }
+    const success = await onAddCustomer({
+      name: newCustName,
+      address: newCustAddress,
+      gstin: newCustGstin,
+      state: newCustState,
+      stateCode: newCustStateCode,
+    });
+    if (success) {
+      setNewCustName("");
+      setNewCustAddress("");
+      setNewCustGstin("");
+      setNewCustState("");
+      setNewCustStateCode("");
+      setShowAddCust(false);
+    }
   };
 
   const handleSellerChange = (field, val) => {
@@ -118,68 +107,77 @@ export default function InvoiceForm({
     onChange({ ...invoiceData, items: newItems });
   };
 
+  const handleViewEditInvoice = (inv) => {
+    alert(`Loading Invoice No. ${inv.metadata?.invoiceNo || "N/A"} for editing...`);
+    onLoadSavedInvoice(inv);
+    setActiveTab("invoice-details"); // Redirect back to Invoice Details tab
+  };
+
+  const handleDownloadInvoice = (inv) => {
+    onLoadSavedInvoice(inv);
+    setTimeout(() => {
+      window.print();
+    }, 200);
+  };
+
   return (
     <div className="editor-panel">
       {/* Editor Section Tabs */}
       <div className="editor-tabs">
         <button
-          className={`tab-btn ${activeTab === "seller-buyer" ? "active" : ""}`}
-          onClick={() => setActiveTab("seller-buyer")}
-        >
-          Seller & Buyer
-        </button>
-        <button
-          className={`tab-btn ${activeTab === "invoice-meta" ? "active" : ""}`}
-          onClick={() => setActiveTab("invoice-meta")}
+          className={`tab-btn ${activeTab === "invoice-details" ? "active" : ""}`}
+          onClick={() => setActiveTab("invoice-details")}
+          style={{ flex: 1 }}
         >
           Invoice Details
         </button>
         <button
-          className={`tab-btn ${activeTab === "items" ? "active" : ""}`}
-          onClick={() => setActiveTab("items")}
-        >
-          Line Items ({invoiceData.items?.length || 0})
-        </button>
-        <button
           className={`tab-btn ${activeTab === "saved-invoices" ? "active" : ""}`}
           onClick={() => setActiveTab("saved-invoices")}
+          style={{ flex: 1 }}
         >
-          Saved Data
+          Saved Invoices ({savedInvoices.length || 0})
         </button>
       </div>
 
       <div className="editor-content">
-        {/* TAB 1: SELLER & BUYER DETAILS */}
-        {activeTab === "seller-buyer" && (
+        {/* TAB 1: INVOICE DETAILS (MERGED TAB) */}
+        {activeTab === "invoice-details" && (
           <div>
             {/* Quick Templates */}
             <div className="form-section-card">
               <div className="section-card-title">Quick Demo Templates</div>
               <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => onLoadTemplate(1)}
-                  style={{ flex: "1 1 45%", fontSize: "0.75rem", padding: "0.4rem" }}
-                >
-                  PDF 1 (Prem Single-Item)
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => onLoadTemplate(2)}
-                  style={{ flex: "1 1 45%", fontSize: "0.75rem", padding: "0.4rem" }}
-                >
-                  PDF 2 (Sridevi Single)
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => onLoadTemplate(3)}
-                  style={{ flex: "1 1 100%", fontSize: "0.75rem", padding: "0.4rem" }}
-                >
-                  PDF 3 (Prem Multi-Product)
-                </button>
+                {currentUser?.sellerName === "PREM ENTERPRISES" && (
+                  <>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => onLoadTemplate(1)}
+                      style={{ flex: "1 1 45%", fontSize: "0.75rem", padding: "0.4rem" }}
+                    >
+                      PDF 1 (Prem Single-Item)
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => onLoadTemplate(3)}
+                      style={{ flex: "1 1 45%", fontSize: "0.75rem", padding: "0.4rem" }}
+                    >
+                      PDF 3 (Prem Multi-Product)
+                    </button>
+                  </>
+                )}
+                {currentUser?.sellerName === "SRIDEVI ENTERPRISES" && (
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => onLoadTemplate(2)}
+                    style={{ flex: "1 1 100%", fontSize: "0.75rem", padding: "0.4rem" }}
+                  >
+                    PDF 2 (Sridevi Single)
+                  </button>
+                )}
               </div>
             </div>
 
@@ -192,7 +190,8 @@ export default function InvoiceForm({
                   type="text"
                   className="form-control"
                   value={invoiceData.seller?.name || ""}
-                  onChange={(e) => handleSellerChange("name", e.target.value)}
+                  disabled={true}
+                  style={{ background: "rgba(255, 255, 255, 0.05)", cursor: "not-allowed", color: "#9ca3af" }}
                   placeholder="e.g. PREM ENTERPRISES"
                 />
               </div>
@@ -243,37 +242,78 @@ export default function InvoiceForm({
             {/* Buyer Info */}
             <div className="form-section-card">
               <div className="section-card-title">Buyer Details (Bill To)</div>
+              
+              {/* Preset Customer Dropdown */}
               <div className="form-group" style={{ marginBottom: "1rem" }}>
-                <label className="form-label" style={{ color: "#3b82f6", fontWeight: "bold" }}>
-                  Select Preset Customer
+                <label className="form-label" style={{ color: "#3b82f6", fontWeight: "bold", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span>Select Preset Customer</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddCust(!showAddCust)}
+                    style={{ background: "none", border: "none", color: "#60a5fa", cursor: "pointer", fontSize: "0.75rem", textDecoration: "underline" }}
+                  >
+                    {showAddCust ? "Cancel" : "+ Add Customer to DB"}
+                  </button>
                 </label>
-                <select
-                  className="form-control"
-                  onChange={(e) => {
-                    const idx = e.target.value;
-                    if (idx !== "") {
-                      handleCustomerSelect(PRESET_CUSTOMERS[idx]);
-                    }
-                  }}
-                  defaultValue=""
-                  style={{ background: "rgba(22, 28, 45, 0.9)", color: "#fff", borderColor: "#3b82f6" }}
-                >
-                  <option value="" disabled>-- Choose Preset Customer --</option>
-                  {PRESET_CUSTOMERS.map((cust, index) => (
-                    <option key={index} value={index}>
-                      {cust.name} ({cust.state})
-                    </option>
-                  ))}
-                </select>
+                {!showAddCust && (
+                  <select
+                    className="form-control"
+                    value=""
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        handleCustomerSelect(customers[parseInt(e.target.value)]);
+                      }
+                    }}
+                    style={{ borderColor: "#2563eb", background: "rgba(30, 41, 59, 0.8)" }}
+                  >
+                    <option value="" disabled>-- Choose customer from DB --</option>
+                    {customers.map((cust, idx) => (
+                      <option key={cust.id || idx} value={idx}>{cust.name} ({cust.stateCode || cust.state_code})</option>
+                    ))}
+                  </select>
+                )}
               </div>
+
+              {/* Add Customer Form (UI addition) */}
+              {showAddCust && (
+                <div style={{ background: "rgba(255,255,255,0.03)", border: "1px dashed rgba(255,255,255,0.1)", borderRadius: "8px", padding: "1rem", marginBottom: "1rem" }}>
+                  <div style={{ fontSize: "0.8rem", fontWeight: "bold", color: "#60a5fa", marginBottom: "0.75rem" }}>Add New Customer Record</div>
+                  <div className="form-group">
+                    <label className="form-label">Customer Name</label>
+                    <input type="text" className="form-control" value={newCustName} onChange={(e) => setNewCustName(e.target.value)} placeholder="Company / Name" />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Address</label>
+                    <textarea className="form-control" rows="2" value={newCustAddress} onChange={(e) => setNewCustAddress(e.target.value)} placeholder="Billing Address" />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">GSTIN</label>
+                    <input type="text" className="form-control" value={newCustGstin} onChange={(e) => setNewCustGstin(e.target.value)} placeholder="GSTIN No." />
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label className="form-label">State</label>
+                      <input type="text" className="form-control" value={newCustState} onChange={(e) => setNewCustState(e.target.value)} placeholder="Maharashtra" />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">State Code</label>
+                      <input type="text" className="form-control" value={newCustStateCode} onChange={(e) => setNewCustStateCode(e.target.value)} placeholder="27" />
+                    </div>
+                  </div>
+                  <button type="button" className="btn btn-primary" onClick={handleSaveCustomer} style={{ width: "100%", fontSize: "0.8rem", padding: "0.5rem", marginTop: "0.5rem", justifyContent: "center" }}>
+                    Save Customer to Database
+                  </button>
+                </div>
+              )}
+
               <div className="form-group">
-                <label className="form-label">Company Name</label>
+                <label className="form-label">Buyer Name</label>
                 <input
                   type="text"
                   className="form-control"
                   value={invoiceData.buyer?.name || ""}
                   onChange={(e) => handleBuyerChange("name", e.target.value)}
-                  placeholder="e.g. RAJADEEPA FOODS"
+                  placeholder="Company/Individual Name"
                 />
               </div>
               <div className="form-group">
@@ -283,7 +323,7 @@ export default function InvoiceForm({
                   rows="3"
                   value={invoiceData.buyer?.address || ""}
                   onChange={(e) => handleBuyerChange("address", e.target.value)}
-                  placeholder="Buyer's delivery and billing address"
+                  placeholder="Buyer's billing address"
                 />
               </div>
               <div className="form-group">
@@ -293,7 +333,7 @@ export default function InvoiceForm({
                   className="form-control"
                   value={invoiceData.buyer?.gstin || ""}
                   onChange={(e) => handleBuyerChange("gstin", e.target.value)}
-                  placeholder="33AHIPN6004E1ZR"
+                  placeholder="e.g. 27AMKPN5833A2Z3"
                 />
               </div>
               <div className="form-row">
@@ -304,7 +344,7 @@ export default function InvoiceForm({
                     className="form-control"
                     value={invoiceData.buyer?.state || ""}
                     onChange={(e) => handleBuyerChange("state", e.target.value)}
-                    placeholder="Tamil Nadu"
+                    placeholder="Maharashtra"
                   />
                 </div>
                 <div className="form-group">
@@ -314,19 +354,15 @@ export default function InvoiceForm({
                     className="form-control"
                     value={invoiceData.buyer?.stateCode || ""}
                     onChange={(e) => handleBuyerChange("stateCode", e.target.value)}
-                    placeholder="33"
+                    placeholder="27"
                   />
                 </div>
               </div>
             </div>
-          </div>
-        )}
 
-        {/* TAB 2: INVOICE METADATA */}
-        {activeTab === "invoice-meta" && (
-          <div>
+            {/* Invoice Meta details */}
             <div className="form-section-card">
-              <div className="section-card-title">Primary Invoice Identifiers</div>
+              <div className="section-card-title">Basic Details</div>
               <div className="form-row">
                 <div className="form-group">
                   <label className="form-label">Invoice No.</label>
@@ -339,7 +375,7 @@ export default function InvoiceForm({
                   />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Invoice Date</label>
+                  <label className="form-label">Dated</label>
                   <input
                     type="text"
                     className="form-control"
@@ -367,18 +403,23 @@ export default function InvoiceForm({
                     className="form-control"
                     value={invoiceData.metadata?.paymentTerms || ""}
                     onChange={(e) => handleMetadataChange("paymentTerms", e.target.value)}
-                    placeholder="e.g. Immediate, Cash"
+                    placeholder="e.g. Immediate / Cash"
                   />
                 </div>
               </div>
+            </div>
+
+            <div className="form-section-card">
+              <div className="section-card-title">References & Order</div>
               <div className="form-row">
                 <div className="form-group">
-                  <label className="form-label">Ref No. & Date</label>
+                  <label className="form-label">Reference No. & Date</label>
                   <input
                     type="text"
                     className="form-control"
                     value={invoiceData.metadata?.referenceNoDate || ""}
                     onChange={(e) => handleMetadataChange("referenceNoDate", e.target.value)}
+                    placeholder="Reference Details"
                   />
                 </div>
                 <div className="form-group">
@@ -388,13 +429,10 @@ export default function InvoiceForm({
                     className="form-control"
                     value={invoiceData.metadata?.otherReferences || ""}
                     onChange={(e) => handleMetadataChange("otherReferences", e.target.value)}
+                    placeholder="Other details"
                   />
                 </div>
               </div>
-            </div>
-
-            <div className="form-section-card">
-              <div className="section-card-title">Order & Dispatch Info</div>
               <div className="form-row">
                 <div className="form-group">
                   <label className="form-label">Buyer's Order No.</label>
@@ -403,18 +441,24 @@ export default function InvoiceForm({
                     className="form-control"
                     value={invoiceData.metadata?.buyerOrderNo || ""}
                     onChange={(e) => handleMetadataChange("buyerOrderNo", e.target.value)}
+                    placeholder="Order number"
                   />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Order Date</label>
+                  <label className="form-label">Dated (Order Date)</label>
                   <input
                     type="text"
                     className="form-control"
                     value={invoiceData.metadata?.orderDate || ""}
                     onChange={(e) => handleMetadataChange("orderDate", e.target.value)}
+                    placeholder="Order Date"
                   />
                 </div>
               </div>
+            </div>
+
+            <div className="form-section-card">
+              <div className="section-card-title">Dispatch & Delivery</div>
               <div className="form-row">
                 <div className="form-group">
                   <label className="form-label">Dispatch Doc No.</label>
@@ -423,6 +467,7 @@ export default function InvoiceForm({
                     className="form-control"
                     value={invoiceData.metadata?.dispatchDocNo || ""}
                     onChange={(e) => handleMetadataChange("dispatchDocNo", e.target.value)}
+                    placeholder="e.g. 04"
                   />
                 </div>
                 <div className="form-group">
@@ -432,6 +477,7 @@ export default function InvoiceForm({
                     className="form-control"
                     value={invoiceData.metadata?.deliveryNoteDate || ""}
                     onChange={(e) => handleMetadataChange("deliveryNoteDate", e.target.value)}
+                    placeholder="e.g. 25-Jul-26"
                   />
                 </div>
               </div>
@@ -443,7 +489,7 @@ export default function InvoiceForm({
                     className="form-control"
                     value={invoiceData.metadata?.dispatchedThrough || ""}
                     onChange={(e) => handleMetadataChange("dispatchedThrough", e.target.value)}
-                    placeholder="e.g. Portor"
+                    placeholder="e.g. Porter"
                   />
                 </div>
                 <div className="form-group">
@@ -453,17 +499,19 @@ export default function InvoiceForm({
                     className="form-control"
                     value={invoiceData.metadata?.destination || ""}
                     onChange={(e) => handleMetadataChange("destination", e.target.value)}
+                    placeholder="e.g. Vasai"
                   />
                 </div>
               </div>
               <div className="form-row">
                 <div className="form-group">
-                  <label className="form-label">Bill of Lading/LR-RR</label>
+                  <label className="form-label">Bill of Lading/LR No.</label>
                   <input
                     type="text"
                     className="form-control"
                     value={invoiceData.metadata?.billOfLading || ""}
                     onChange={(e) => handleMetadataChange("billOfLading", e.target.value)}
+                    placeholder="LR details"
                   />
                 </div>
                 <div className="form-group">
@@ -473,6 +521,7 @@ export default function InvoiceForm({
                     className="form-control"
                     value={invoiceData.metadata?.motorVehicleNo || ""}
                     onChange={(e) => handleMetadataChange("motorVehicleNo", e.target.value)}
+                    placeholder="e.g. MH-48-AN-1234"
                   />
                 </div>
               </div>
@@ -483,70 +532,76 @@ export default function InvoiceForm({
                   rows="2"
                   value={invoiceData.metadata?.termsOfDelivery || ""}
                   onChange={(e) => handleMetadataChange("termsOfDelivery", e.target.value)}
+                  placeholder="Terms of delivery description..."
                 />
               </div>
             </div>
 
             <div className="form-section-card">
-              <div className="section-card-title">Tax and Word Formatting Settings</div>
+              <div className="section-card-title">Tax Calculations & Summary</div>
               <div className="form-group">
-                <label className="form-label">GST Tax Mode</label>
+                <label className="form-label">Tax Rows Calculation Mode</label>
                 <select
                   className="form-control"
                   value={invoiceData.taxMode}
                   onChange={(e) => onChange({ ...invoiceData, taxMode: e.target.value })}
                 >
-                  <option value="auto">Auto (IGST if States Differ, CGST+SGST if Same)</option>
-                  <option value="cgst-sgst">Force CGST + SGST (9% + 9%)</option>
-                  <option value="igst">Force IGST (18%)</option>
+                  <option value="auto">Automatic (Auto-detect State Code)</option>
+                  <option value="cgst-sgst">Force CGST / SGST Rows</option>
+                  <option value="igst">Force IGST Rows</option>
                 </select>
               </div>
+
               <div className="form-group">
-                <label className="form-label">Amount Chargeable in Words Source</label>
+                <label className="form-label">Amount in Words Calculation</label>
                 <select
                   className="form-control"
                   value={invoiceData.wordsMode}
                   onChange={(e) => onChange({ ...invoiceData, wordsMode: e.target.value })}
                 >
-                  <option value="grandTotal">(Recommended) Grand Total (Inclusive of Tax)</option>
-                  <option value="taxableValue">Taxable Value (Before Tax - Matches PDF 1 & 2 standard)</option>
+                  <option value="grandTotal">Words for Grand Total (Final Amount)</option>
+                  <option value="taxableValue">Words for Taxable Value (Subtotal)</option>
                 </select>
               </div>
+
               <div className="form-group">
-                <label className="form-label">Invoice Declaration Text</label>
+                <label className="form-label">Declaration</label>
                 <textarea
                   className="form-control"
-                  rows="2"
+                  rows="3"
                   value={invoiceData.declaration || ""}
                   onChange={(e) => onChange({ ...invoiceData, declaration: e.target.value })}
+                  placeholder="Declaration..."
                 />
               </div>
             </div>
-          </div>
-        )}
 
-        {/* TAB 3: LINE ITEMS */}
-        {activeTab === "items" && (
-          <div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-              <span style={{ fontWeight: 600, color: "var(--text-secondary)" }}>Items Details</span>
-              <button type="button" className="btn btn-primary" onClick={handleAddItem} style={{ padding: "0.4rem 0.8rem", fontSize: "0.8rem" }}>
-                + Add New Item
+            {/* Line Items section (merged inside Invoice Details) */}
+            <div className="form-section-header-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "1.5rem 0 1rem 0" }}>
+              <div className="section-card-title" style={{ margin: 0 }}>Itemized Goods List</div>
+              <button type="button" className="btn btn-primary" onClick={handleAddItem} style={{ fontSize: "0.8rem", padding: "0.4rem 0.8rem" }}>
+                + Add Item
               </button>
             </div>
 
             {invoiceData.items.map((item, idx) => (
-              <div className="form-section-card item-row-edit" key={idx}>
-                <div className="section-card-title">
-                  <span>Item #{idx + 1}</span>
+              <div key={idx} className="form-section-card item-card-editor" style={{ borderLeft: "4px solid #3b82f6", position: "relative" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+                  <div style={{ fontWeight: "bold", fontSize: "0.85rem", color: "#3b82f6" }}>Item #{idx + 1}</div>
                   {invoiceData.items.length > 1 && (
                     <button
                       type="button"
-                      className="btn-danger"
                       onClick={() => handleDeleteItem(idx)}
-                      style={{ padding: "0.15rem 0.4rem", borderRadius: "4px" }}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        color: "#ef4444",
+                        cursor: "pointer",
+                        fontSize: "0.75rem",
+                        fontWeight: "bold"
+                      }}
                     >
-                      Delete
+                      Remove
                     </button>
                   )}
                 </div>
@@ -558,7 +613,7 @@ export default function InvoiceForm({
                     className="form-control"
                     value={item.description || ""}
                     onChange={(e) => handleItemChange(idx, "description", e.target.value)}
-                    placeholder="e.g. PLASTIC PACKAGING BAGS"
+                    placeholder="Product name, specifications"
                   />
                 </div>
 
@@ -574,13 +629,13 @@ export default function InvoiceForm({
                     />
                   </div>
                   <div className="form-group">
-                    <label className="form-label">Unit of Measure (per)</label>
+                    <label className="form-label">GST Rate (%)</label>
                     <input
-                      type="text"
+                      type="number"
                       className="form-control"
-                      value={item.unit || ""}
-                      onChange={(e) => handleItemChange(idx, "unit", e.target.value)}
-                      placeholder="e.g. kg, pcs, bags"
+                      value={item.gstRate || ""}
+                      onChange={(e) => handleItemChange(idx, "gstRate", parseInt(e.target.value) || 0)}
+                      placeholder="18"
                     />
                   </div>
                 </div>
@@ -598,27 +653,23 @@ export default function InvoiceForm({
                     />
                   </div>
                   <div className="form-group">
-                    <label className="form-label">GST Tax Rate (%)</label>
-                    <select
+                    <label className="form-label">Unit</label>
+                    <input
+                      type="text"
                       className="form-control"
-                      value={item.gstRate}
-                      onChange={(e) => handleItemChange(idx, "gstRate", e.target.value)}
-                    >
-                      <option value="18">18% (Standard)</option>
-                      <option value="5">5%</option>
-                      <option value="12">12%</option>
-                      <option value="28">28%</option>
-                      <option value="0">0% (Exempt)</option>
-                    </select>
+                      value={item.unit || ""}
+                      onChange={(e) => handleItemChange(idx, "unit", e.target.value)}
+                      placeholder="e.g. kg, PCS"
+                    />
                   </div>
                 </div>
 
                 <div className="form-row">
                   <div className="form-group">
-                    <label className="form-label">Rate Setting</label>
+                    <label className="form-label">Rate Type</label>
                     <select
                       className="form-control"
-                      value={item.rateType}
+                      value={item.rateType || "incl"}
                       onChange={(e) => handleItemChange(idx, "rateType", e.target.value)}
                     >
                       <option value="incl">Rate (Incl. of Tax)</option>
@@ -642,36 +693,30 @@ export default function InvoiceForm({
           </div>
         )}
 
-        {/* TAB 4: SAVED DATA / JSON DB */}
+        {/* TAB 2: SAVED INVOICES DATA TABLE VIEW */}
         {activeTab === "saved-invoices" && (
           <div>
-            <div className="form-section-card">
-              <div className="section-card-title">Saved Invoices (JSON DB)</div>
+            <div className="form-section-card" style={{ padding: "1.25rem 1rem" }}>
+              <div className="section-card-title">Saved Invoices Table</div>
               {savedInvoices.length === 0 ? (
-                <div style={{ color: "var(--text-secondary)", fontSize: "0.85rem", textAlign: "center", padding: "1.5rem 0" }}>
+                <div style={{ color: "var(--text-secondary)", fontSize: "0.85rem", textAlign: "center", padding: "2.5rem 0" }}>
                   No saved invoices found. Save the current form as an invoice to display here.
                 </div>
               ) : (
-                <div className="saved-invoices-list">
-                  {savedInvoices.map((inv) => (
-                    <div
-                      key={inv.id}
-                      className="invoice-item-card"
-                      onClick={() => onLoadSavedInvoice(inv)}
-                    >
-                      <div className="invoice-item-info">
-                        <span className="invoice-item-title">
-                          Inv #{inv.metadata?.invoiceNo || "N/A"}
-                        </span>
-                        <span className="invoice-item-subtitle">
-                          {inv.buyer?.name || "No Buyer Name"}
-                        </span>
-                        <span className="invoice-item-subtitle" style={{ fontSize: "0.7rem" }}>
-                          {inv.createdAt ? new Date(inv.createdAt).toLocaleString() : ""}
-                        </span>
-                      </div>
-                      <div className="invoice-item-meta">
-                        ₹ {inv.items?.reduce((acc, item) => {
+                <div className="table-responsive-container">
+                  <table className="saved-invoices-table">
+                    <thead>
+                      <tr>
+                        <th>No.</th>
+                        <th>Date</th>
+                        <th>Buyer</th>
+                        <th>Total</th>
+                        <th style={{ textAlign: "center" }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {savedInvoices.map((inv) => {
+                        const totalAmount = inv.items?.reduce((acc, item) => {
                           const qty = parseFloat(item.quantity) || 0;
                           const rate = parseFloat(item.rate) || 0;
                           const gst = parseFloat(item.gstRate) || 18;
@@ -680,25 +725,63 @@ export default function InvoiceForm({
                             value = value * (1 + gst / 100);
                           }
                           return acc + value;
-                        }, 0).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                      </div>
-                    </div>
-                  ))}
+                        }, 0) || 0;
+
+                        return (
+                          <tr key={inv.id}>
+                            <td className="table-inv-no">#{inv.metadata?.invoiceNo || "N/A"}</td>
+                            <td className="table-inv-date">{inv.metadata?.dated || "N/A"}</td>
+                            <td className="table-inv-buyer" title={inv.buyer?.name}>{inv.buyer?.name || "N/A"}</td>
+                            <td className="table-inv-total">₹{totalAmount.toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
+                            <td className="table-actions-cell">
+                              <button
+                                type="button"
+                                className="action-btn-load"
+                                title="View and Edit invoice"
+                                onClick={() => handleViewEditInvoice(inv)}
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                              </button>
+                              <button
+                                type="button"
+                                className="action-btn-download"
+                                title="Download invoice PDF"
+                                onClick={() => handleDownloadInvoice(inv)}
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                              </button>
+                              <button
+                                type="button"
+                                className="action-btn-delete"
+                                title="Delete invoice"
+                                onClick={() => onDeleteInvoice(inv.id)}
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>
 
+            {/* Workspace Operations: Commented out for now as requested */}
+            {/*
             <div className="form-section-card">
-              <div className="section-card-title">JSON Operations</div>
+              <div className="section-card-title">Workspace Operations</div>
               <button
                 type="button"
                 className="btn btn-secondary"
                 onClick={onClearForm}
-                style={{ width: "100%", marginBottom: "0.5rem" }}
+                style={{ width: "100%", justifyContent: "center" }}
               >
-                Clear Form & Start Fresh
+                Clear Editor & Start Fresh
               </button>
             </div>
+            */}
           </div>
         )}
       </div>
@@ -711,7 +794,7 @@ export default function InvoiceForm({
           onClick={onSaveInvoice}
           style={{ flex: 1, justifyContent: "center" }}
         >
-          Save to DB (JSON)
+          Save to Database
         </button>
         <button
           type="button"
