@@ -203,7 +203,7 @@ export default function InvoicePreview({ invoiceData }) {
             <div className="meta-row">
               <div className="meta-cell">
                 <span className="meta-label">Delivery Note</span>
-                <span className="meta-value">{metadata.deliveryNote || ""}</span>
+                <span className="meta-value">{metadata.deliveryNote || metadata.invoiceNo || ""}</span>
               </div>
               <div className="meta-cell">
                 <span className="meta-label">Mode/Terms of Payment</span>
@@ -252,17 +252,17 @@ export default function InvoicePreview({ invoiceData }) {
               </div>
               <div className="meta-cell">
                 <span className="meta-label">Dated</span>
-                <span className="meta-value">{metadata.orderDate || ""}</span>
+                <span className="meta-value">{metadata.orderDate || metadata.dated || ""}</span>
               </div>
             </div>
             <div className="meta-row">
               <div className="meta-cell">
                 <span className="meta-label">Dispatch Doc No.</span>
-                <span className="meta-value">{metadata.dispatchDocNo || ""}</span>
+                <span className="meta-value">{metadata.dispatchDocNo || metadata.deliveryNote || metadata.invoiceNo || ""}</span>
               </div>
               <div className="meta-cell">
                 <span className="meta-label">Delivery Note Date</span>
-                <span className="meta-value">{metadata.deliveryNoteDate || ""}</span>
+                <span className="meta-value">{metadata.deliveryNoteDate || metadata.dated || ""}</span>
               </div>
             </div>
             <div className="meta-row">

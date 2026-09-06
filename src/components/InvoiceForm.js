@@ -74,9 +74,25 @@ export default function InvoiceForm({
   };
 
   const handleMetadataChange = (field, val) => {
+    const updatedMetadata = { ...invoiceData.metadata, [field]: val };
+
+    // Auto sync Delivery Note and Dispatch Doc No. with Invoice No.
+    if (field === "invoiceNo" || field === "deliveryNote" || field === "dispatchDocNo") {
+      updatedMetadata.invoiceNo = val;
+      updatedMetadata.deliveryNote = val;
+      updatedMetadata.dispatchDocNo = val;
+    }
+
+    // Auto sync Date across all date fields (Invoice Dated, Order Date, Delivery Note Date)
+    if (field === "dated" || field === "orderDate" || field === "deliveryNoteDate") {
+      updatedMetadata.dated = val;
+      updatedMetadata.orderDate = val;
+      updatedMetadata.deliveryNoteDate = val;
+    }
+
     onChange({
       ...invoiceData,
-      metadata: { ...invoiceData.metadata, [field]: val },
+      metadata: updatedMetadata,
     });
   };
 

@@ -91,13 +91,7 @@ export async function POST(request) {
     }
 
     const newInvoice = await request.json();
-    if (!newInvoice.id) {
-      newInvoice.id = Date.now().toString();
-    }
-    
-    if (!newInvoice.createdAt) {
-      newInvoice.createdAt = new Date().toISOString();
-    }
+    const targetInvoiceNo = (newInvoice.metadata?.invoiceNo || "").trim();
 
     // Force the invoice seller name to be the authenticated seller
     if (!newInvoice.seller) {
@@ -109,6 +103,35 @@ export async function POST(request) {
 
     if (isDbReady && db) {
       try {
+        // Check if an invoice with the exact same invoice_no already exists for this seller in Turso DB
+        let existingId = null;
+        let existingCreatedAt = null;
+
+        if (targetInvoiceNo) {
+          const matchResult = await db.execute({
+            sql: "SELECT id, created_at FROM invoices WHERE seller_name = ? AND invoice_no = ? LIMIT 1",
+            args: [sellerHeader, targetInvoiceNo]
+          });
+          if (matchResult.rows && matchResult.rows.length > 0) {
+            existingId = matchResult.rows[0].id;
+            existingCreatedAt = matchResult.rows[0].created_at;
+          }
+        }
+
+        // If an invoice with the same invoice_no exists for this seller, UPDATE it (reuse existing ID & creation date)
+        if (existingId) {
+          newInvoice.id = existingId;
+          if (existingCreatedAt) {
+            newInvoice.createdAt = existingCreatedAt;
+          }
+        } else {
+          // If invoice_no is a new/different invoice number, save as a NEW separate invoice with unique ID
+          newInvoice.id = Date.now().toString();
+          if (!newInvoice.createdAt) {
+            newInvoice.createdAt = new Date().toISOString();
+          }
+        }
+
         const metadataStr = JSON.stringify(newInvoice.metadata || {});
         const itemsStr = JSON.stringify(newInvoice.items || []);
 
@@ -123,9 +146,9 @@ export async function POST(request) {
           `,
           args: [
             newInvoice.id,
-            newInvoice.metadata?.invoiceNo || "",
+            targetInvoiceNo,
             newInvoice.metadata?.dated || "",
-            newInvoice.seller?.name || "",
+            sellerHeader,
             newInvoice.seller?.address || "",
             newInvoice.seller?.gstin || "",
             newInvoice.seller?.state || "",
@@ -150,18 +173,32 @@ export async function POST(request) {
       }
     }
 
-    // Fallback mode
+    // Fallback mode (JSON storage)
     const invoices = readInvoicesJson();
-    const existingIndex = invoices.findIndex((inv) => inv.id === newInvoice.id);
-
-    // Authorization check in fallback mode
-    if (existingIndex > -1 && invoices[existingIndex].seller?.name !== sellerHeader) {
-      return NextResponse.json({ error: "Forbidden: Cannot edit another seller's invoice" }, { status: 403 });
+    let existingIndex = -1;
+    if (targetInvoiceNo) {
+      existingIndex = invoices.findIndex(
+        (inv) => inv.seller?.name === sellerHeader && (inv.metadata?.invoiceNo || "").trim() === targetInvoiceNo
+      );
     }
 
     if (existingIndex > -1) {
+      // Update existing invoice with same invoice_no
+      if (invoices[existingIndex].seller?.name !== sellerHeader) {
+        return NextResponse.json({ error: "Forbidden: Cannot edit another seller's invoice" }, { status: 403 });
+      }
+
+      newInvoice.id = invoices[existingIndex].id;
+      if (invoices[existingIndex].createdAt) {
+        newInvoice.createdAt = invoices[existingIndex].createdAt;
+      }
       invoices[existingIndex] = newInvoice;
     } else {
+      // Save as a new separate invoice
+      newInvoice.id = Date.now().toString();
+      if (!newInvoice.createdAt) {
+        newInvoice.createdAt = new Date().toISOString();
+      }
       invoices.push(newInvoice);
     }
 
